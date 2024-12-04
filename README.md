@@ -41,7 +41,7 @@ You only have to do one of these. No matter which one you choose, you will have 
 
 ## Feature Semantics
 
-### Conditional Operators
+### Conditional and Logic Operators
 
 If you choose this version of the exam, you'll have to implement the following conditional operators:
 
@@ -51,6 +51,8 @@ If you choose this version of the exam, you'll have to implement the following c
 4) Less-than or Equal-to (`<=`)
 5) Equal-to (`==`)
 6) Not Equal-to (`!=`)
+7) And (`&&`)
+8) Or (`||`)
 
 A conditional expressions is a number, boolean, identifier or expression; followed by one of the noted operators below; followed by another number, boolean, identifier or expression. Here are some examples of valid and invalid conditional expressions.
 
@@ -101,6 +103,8 @@ If expressions have the following semantic parts:
 - The fail expression
 
 The syntax of the if expression is the keyword "if" followed by an expression that must evaluate to a boolean value; a list of statements enclosed in curly braces follows; then the keyword "else"; then a second list of statements enclosed in curly braces. An optional "else if" section may follow the "if" section. Here are some examples of valid and invalid if-expressions.
+
+You'll have to implement conditional operators for this part, but not logic operators.
 
 Vaid if-expressions:
 
