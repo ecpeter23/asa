@@ -320,8 +320,7 @@ In this part you must:
 
 1. Write at least 10 new tests for your implementation.
 2. Update any previous tests to accomodate your new additions.
-3. In total you should have at least 20 tests you have written (5 new tests you wrote for HW5 + 10 new tests you have just written for the final)
-4. Make a continuous integration (CI) script runs the tests when code is pushed to Gitlab.
+3. Make a continuous integration (CI) script runs the tests when code is pushed to Gitlab.
 
 ## Part 5 - Code Demo and Explanation
 
@@ -347,7 +346,7 @@ You can use Zoom to do this, [here is a link](https://support.zoom.us/hc/en-us/a
 
 Please submit your completed exam, which should include:
 
-1. A detailed description of the feature you chose to implement (conditional operators or if-expressions).
+1. A detailed description of the feature you chose to implement (conditional operators or if-expressions etc.).
 2. The updated EBNF grammar for your chosen feature.
 3. The updated parser and interpreter code, including any necessary modifications to support your chosen feature.
 4. Test cases demonstrating the correct parsing and evaluation of your chosen feature.
