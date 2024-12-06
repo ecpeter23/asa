@@ -1,8 +1,8 @@
-# CSE262 - Programming Languages - Spring 2024
+# CSE262 - Programming Languages - Fall 2024
 
 # Final Exam
 
-⏰ **Due by: 5/12/2024 EOD**
+⏰ **Due by: 12/16/2024 EOD**
 
 ## Ethics Contract
 
