@@ -28,7 +28,7 @@ If you agree with the above, type your full name next to the pen emoji, along wi
 
 ## Exam
 
-In this final exam, you are going to design and implement a new feature for the Asa programming language we've been implementing all semester. You may use your Homework 5 solution as the basis for your exam. If you didn't fully complete Homework 5, you must first complete it using the [posted solutions](http://gitlab.cse.lehigh.edu/cse262-programming-languages/fall-2023/assignments/homework-5/-/tree/solutions). Copy and paste the solutions into your repository, and go through the commented lines of code to understand the implementation of the interpreter.
+In this final exam, you are going to design and implement a new feature for the Asa programming language we've been implementing all semester. You may use your Homework 5 solution as the basis for your exam. If you didn't fully complete Homework 5, you must first complete it using the [posted solutions](http://gitlab.cse.lehigh.edu/cse262-programming-languages/fall-2024/assignments/homework-5/-/tree/solutions). Copy and paste the solutions into your repository, and go through the commented lines of code to understand the implementation of the interpreter.
 
 You can choose between three different features to implement, each with a different maximum possible score, or you may implement them all to achieve the maximum score of 100%:
 
