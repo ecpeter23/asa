@@ -349,11 +349,12 @@ pub fn exponentiation(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, node))
 }
 
-// unary = [ ("+" | "-") ] , primary ;
+// unary = [ ("+" | "-" | "!") ] , primary ;
 pub fn unary(input: Tokens) -> IResult<Tokens, Node> {
   let (input, opt_op_token) = opt(alt((
     check_token(&|tk| tk.kind == TokenKind::Plus),
     check_token(&|tk| tk.kind == TokenKind::Dash),
+    check_token(&|tk| tk.kind == TokenKind::Not),
   )))(input)?;
 
   let (input, prim_node) = primary(input)?;
@@ -362,6 +363,7 @@ pub fn unary(input: Tokens) -> IResult<Tokens, Node> {
     let op_name = match op_token.kind {
       TokenKind::Plus => b"+".to_vec(),
       TokenKind::Dash => b"-".to_vec(),
+      TokenKind::Not => b"!".to_vec(),
       _ => vec![],
     };
     Ok((

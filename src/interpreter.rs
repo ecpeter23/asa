@@ -104,6 +104,8 @@ impl Interpreter {
     match (op_str, val) {
       ("+", Value::Number(n)) => Ok(Value::Number(n)),
       ("-", Value::Number(n)) => Ok(Value::Number(-n)),
+      ("!", Value::Number(n)) => Ok(Value::Number(!n)),
+      ("!", Value::Bool(b)) => Ok(Value::Bool(!b)),
       _ => Err(AsaErrorKind::Generic("Type error in unary expression".to_string())),
     }
   }

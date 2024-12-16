@@ -62,7 +62,7 @@ pub enum TokenKind {
   LessThanOrEqual,
   LogicalAnd,
   LogicalOr,
-  LogicalNot,
+  Not,
   Plus,
   Dash,
   Multiply,
@@ -212,7 +212,7 @@ pub fn lex(input: &str) -> Tokens {
           i += 1;
           TokenKind::NotEqual
         } else {
-          TokenKind::LogicalNot
+          TokenKind::Not
         }
       }
       59 => TokenKind::Semicolon,
