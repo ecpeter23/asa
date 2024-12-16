@@ -38,6 +38,8 @@ pub enum Node {
   Identifier { value: Vec<u8> },
   String { value: Vec<u8> },
   Null,
+  Break,
+  Continue,
 }
 
 // Some helper functions to use Tokens instead of a &str with Nom.
@@ -182,6 +184,7 @@ pub fn value(input: Tokens) -> IResult<Tokens, Node> {
 pub fn expression(input: Tokens) -> IResult<Tokens, Node> {
   map(
     alt((
+      if_expression,
       logical_or,
       boolean,
       function_call,
@@ -331,6 +334,16 @@ pub fn while_loop(input: Tokens) -> IResult<Tokens, Node> {
   }))
 }
 
+pub fn break_statement(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, _) = check_token(&|tk| tk.kind == TokenKind::Break)(input)?;
+  Ok((input, Node::Break))
+}
+
+pub fn continue_statement(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, _) = check_token(&|tk| tk.kind == TokenKind::Continue)(input)?;
+  Ok((input, Node::Continue))
+}
+
 // addition = multiplication , { ("+" | "-") , multiplication } ;
 pub fn addition(input: Tokens) -> IResult<Tokens, Node> {
   let (input, first_mul) = multiplication(input)?;
@@ -461,6 +474,8 @@ pub fn statement(input: Tokens) -> IResult<Tokens, Node> {
     map(terminated(variable_define, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(assignment, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(function_return, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
+    map(terminated(break_statement, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
+    map(terminated(continue_statement, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     if_expression,
     while_loop
   ))(input)?;
