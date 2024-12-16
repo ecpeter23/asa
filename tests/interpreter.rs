@@ -3,7 +3,7 @@ extern crate nom;
 use std::io::Write;
 
 use asalang::*;
-use nom::IResult;
+// use nom::IResult;
 
 macro_rules! test_fragment {
   ($func:ident, $test:tt, $expected:expr) => (
@@ -83,5 +83,9 @@ test_fragment!(boolean_comparison_false, r#"(1 > 2)"#, Ok(Value::Bool(false)));
 test_fragment!(boolean_equality_check, r#"let foo = true; let bar = false; let baz = foo == bar; return baz;"#, Ok(Value::Bool(false)));
 test_fragment!(boolean_not_operator, r#"return !(1 > 0) && true;"#, Ok(Value::Bool(false)));
 test_fragment!(boolean_complex_expression, r#"(2 > 1 && 3 > 2) || (5 < 4)"#, Ok(Value::Bool(true)));
+
+test_fragment!(double_if_statement, r#"let x = 0; let y = 0; if (x < 10) { if (y < 5) { y = 5; } x = 10; } return x + y;"#, Ok(Value::Number(15)));
+
+test_fragment!(double_while_loop, r#"let x = 0; let y = 0; while (x < 10) { while (y < 5) { y = y + 1;} x = x + 1; } return x + y;"#, Ok(Value::Number(15)));
 
 

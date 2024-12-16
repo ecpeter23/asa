@@ -5,7 +5,7 @@ use asalang::*;
 
 fn main() -> Result<(), AsaErrorKind> {
   
-  let tokens = lex("return !(1 > 0) && true;");
+  let tokens = lex("if (1 > 0) { return true; } else { return false; }");
   match program(tokens) {
     Ok((tokens, tree)) => {
       println!("{:?}", tokens);

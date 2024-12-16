@@ -123,6 +123,8 @@ impl Interpreter {
             Node::Bool{..} |
             Node::Statement{..} |
             Node::Block{..} |
+            Node::IfExpression{..} |
+            Node::WhileLoop{..} |
             Node::FunctionReturn{..} => {
               self.exec(n)?
             }
@@ -189,13 +191,56 @@ impl Interpreter {
         // Run all children and return last
         Err(AsaErrorKind::Generic("Function statements not implemented".to_string()))
       },
-      Node::IfExpression{..} => {
-        // Not tested by given test
-        Err(AsaErrorKind::Generic("If not implemented".to_string()))
-      },
-      Node::WhileLoop{..} => {
-        // Not tested
-        Err(AsaErrorKind::Generic("While loop not implemented".to_string()))
+      Node::IfExpression { children } => {
+        // children[0] = condition
+        // children[1] = then block
+        // children[2] = else block (optional)
+
+        let condition_value = self.exec(&children[0])?;
+        match condition_value {
+          Value::Bool(true) => {
+            // Condition is true: execute the 'then' block
+            self.exec(&children[1])
+          },
+          Value::Bool(false) => {
+            // Condition is false: if there's an else block, execute it
+            // otherwise, just return a default value (e.g., Bool(true) or Null)
+            if children.len() > 2 {
+              self.exec(&children[2])
+            } else {
+              Ok(Value::Bool(true)) // or whatever default value you choose
+            }
+          },
+          _ => {
+            // If the condition doesn't evaluate to a boolean,
+            // report a type error or handle it as you see fit.
+            Err(AsaErrorKind::TypeMismatch("If condition must be boolean".to_string()))
+          }
+        }
+      }
+      Node::WhileLoop{children} => {
+        // children[0] = condition
+        // children[1] = body block
+
+        loop {
+          let condition_value = self.exec(&children[0])?;
+          match condition_value {
+            Value::Bool(true) => {
+              // Condition is true, execute the body block
+              self.exec(&children[1])?;
+            },
+            Value::Bool(false) => {
+              // Condition is false, stop looping and return default value
+              break Ok(Value::Bool(true));
+            },
+            _ => {
+              // If the condition isn't boolean, return a type error
+              return Err(AsaErrorKind::TypeMismatch(
+                "While condition must be boolean".to_string()
+              ));
+            }
+          }
+        }
       },
       Node::FunctionCall{..} => {
         // Not tested
