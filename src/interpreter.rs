@@ -62,13 +62,46 @@ impl Interpreter {
     let op_str = std::str::from_utf8(op)
       .map_err(|_| AsaErrorKind::Generic("Invalid UTF-8 in operator".to_string()))?;
 
+    if op_str == "+" {
+      match (left, right) {
+        (Value::String(lhs), Value::String(rhs)) => {
+          return Ok(Value::String(lhs + &rhs));
+        }
+        (Value::String(lhs), r_val) => {
+          let rhs = match r_val {
+            Value::String(s) => s,
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Identifier(id) => format!("<id:{}>", id),
+            Value::Function{..} => "<function>".to_string(),
+          };
+          return Ok(Value::String(lhs + &rhs));
+        }
+        (l_val, Value::String(rhs)) => {
+          let lhs = match l_val {
+            Value::String(s) => s,
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Identifier(id) => format!("<id:{}>", id),
+            Value::Function{..} => "<function>".to_string(),
+          };
+          return Ok(Value::String(lhs + &rhs));
+        }
+        (Value::Number(l_num), Value::Number(r_num)) => {
+          return Ok(Value::Number(l_num + r_num));
+        }
+        (Value::Bool(_)|Value::Number(_)|Value::Identifier(_)|Value::Function{..}, Value::Bool(_)|Value::Number(_)|Value::Identifier(_)|Value::Function{..}) => {
+          return Err(AsaErrorKind::TypeMismatch("Invalid types for `+` operation".to_string()));
+        }
+      }
+    }
+
     match (left, right, op_str) {
       (l_generic, r_generic, "==") => Ok(Value::Bool(l_generic == r_generic)),
       (l_generic, r_generic, "!=") => Ok(Value::Bool(l_generic != r_generic)),
 
       (Value::Number(l_num), Value::Number(r_num), _) => {
         let result = match op_str {
-          "+" => Value::Number(l_num + r_num),
           "-" => Value::Number(l_num - r_num),
           "*" => Value::Number(l_num * r_num),
           "%" => {
