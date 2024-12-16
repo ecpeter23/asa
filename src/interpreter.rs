@@ -10,6 +10,10 @@ pub enum Value {
   Number(i32),
   Bool(bool),
   Identifier(u64),
+  Function {
+    params: Vec<(u64, Option<Node>)>,
+    body: Box<Node>,
+  },
 }
 
 type Frame = HashMap<u64, Value>;
@@ -116,6 +120,53 @@ impl Interpreter {
     }
   }
 
+  fn call_function(&mut self, func_val: Value, arg_nodes: &[Node]) -> Result<Value, AsaErrorKind> {
+    match func_val {
+      Value::Function { params, body } => {
+        if arg_nodes.len() > params.len() {
+          return Err(AsaErrorKind::Generic(format!(
+            "Function expected {} arguments, got {}",
+            params.len(),
+            arg_nodes.len()
+          )));
+        }
+
+        // Create new frame
+        self.stack.push(HashMap::new());
+
+        for (i, (param_id, default_node)) in params.iter().enumerate() {
+          let val = if i < arg_nodes.len() {
+            // Argument provided by caller
+            self.exec(&arg_nodes[i])?
+          } else {
+            // No argument provided, use default if available
+            if let Some(def_node) = default_node {
+              self.exec(def_node)?
+            } else {
+              return Err(AsaErrorKind::Generic(
+                "Missing argument for parameter without default".to_string()
+              ));
+            }
+          };
+          self.set_variable(*param_id, val);
+        }
+
+        let result = match self.exec(&body) {
+          Ok(val) => val,
+          Err(AsaErrorKind::ReturnSignal(ret_val)) => ret_val,
+          Err(e) => {
+            self.stack.pop();
+            return Err(e);
+          }
+        };
+
+        self.stack.pop();
+        Ok(result)
+      }
+      _ => Err(AsaErrorKind::Generic("Attempted to call a non-function value".to_string())),
+    }
+  }
+
   pub fn exec(&mut self, node: &Node) -> Result<Value,AsaErrorKind> {
     match node {
       Node::Program{children} => {
@@ -178,17 +229,64 @@ impl Interpreter {
         let val = self.exec(&children[0])?;
         self.eval_unary_op(name, val)
       },
-      Node::FunctionDefine{..} => {
-        // Not tested
-        Err(AsaErrorKind::Generic("Function define not implemented".to_string()))
-      },
-      Node::FunctionArguments{..} => {
-        // Just return Null or something if encountered directly
+      Node::FunctionDefine{name, children} => {
+        // children[0] = FunctionArguments (now containing ArgumentDefine nodes)
+        // children[1] = FunctionStatements
+        let func_name_id = Self::hash_identifier(name);
+
+        let mut params = Vec::new();
+        if let Node::FunctionArguments { children: param_nodes } = &children[0] {
+          for param_node in param_nodes {
+            // param_node is Node::ArgumentDefine { children: [...] }
+            if let Node::ArgumentDefine { children: arg_children } = param_node {
+              // arg_children[0] should be an Identifier
+              let (arg_id, default_node) = match arg_children.as_slice() {
+                [Node::Identifier { value }] => {
+                  let arg_id = Self::hash_identifier(value);
+                  (arg_id, None)
+                }
+                [Node::Identifier { value }, default_expr] => {
+                  let arg_id = Self::hash_identifier(value);
+                  (arg_id, Some(default_expr.clone()))
+                }
+                _ => return Err(AsaErrorKind::Generic("Invalid parameter definition".to_string())),
+              };
+              params.push((arg_id, default_node));
+            } else {
+              return Err(AsaErrorKind::Generic("Invalid argument node in function definition".to_string()));
+            }
+          }
+        }
+
+        let body_node = &children[1];
+
+        let func_value = Value::Function {
+          params,
+          body: Box::new(body_node.clone()),
+        };
+
+        self.set_variable(func_name_id, func_value);
         Ok(Value::Bool(true))
       },
-      Node::FunctionStatements{..} => {
-        // Run all children and return last
-        Err(AsaErrorKind::Generic("Function statements not implemented".to_string()))
+      Node::FunctionArguments {..} => {
+        // Should not be executed on its own
+        Err(AsaErrorKind::Generic("FunctionArguments node should not be executed directly".to_string()))
+      },
+      Node::ArgumentDefine {..} => {
+        // Should not be executed on its own
+        Err(AsaErrorKind::Generic("ArgumentDefine node should not be executed directly".to_string()))
+      },
+      Node::FunctionStatements { children } => {
+        // Run all children and return last (if no return encountered)
+        let mut last = Value::Bool(true);
+        for c in children {
+          match self.exec(c) {
+            Ok(val) => last = val,
+            Err(AsaErrorKind::ReturnSignal(val)) => return Err(AsaErrorKind::ReturnSignal(val)),
+            Err(e) => return Err(e),
+          }
+        }
+        Ok(last)
       },
       Node::IfExpression { children } => {
         // children layout:
@@ -271,9 +369,23 @@ impl Interpreter {
           }
         }
       },
-      Node::FunctionCall{..} => {
-        // Not tested
-        Err(AsaErrorKind::Generic("Function call not implemented".to_string()))
+      Node::FunctionCall{name, children} => {
+        // children[0] = FunctionArguments
+        let func_id = Self::hash_identifier(name);
+        let func_val = self.get_variable(func_id)?;
+        // Extract arguments from children[0]
+        let mut arg_nodes = Vec::new();
+        if let Node::FunctionArguments { children: args } = &children[0] {
+          for arg in args {
+            if let Node::Expression { children: exprs } = arg {
+              // Each expression node has one child which is the actual expression
+              arg_nodes.push(exprs[0].clone());
+            } else {
+              arg_nodes.push(arg.clone());
+            }
+          }
+        }
+        self.call_function(func_val, &arg_nodes)
       },
       Node::Assignment{children} => {
         // Not tested, but easy to implement:

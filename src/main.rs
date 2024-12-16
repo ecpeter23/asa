@@ -5,7 +5,12 @@ use asalang::*;
 
 fn main() -> Result<(), AsaErrorKind> {
   
-  let tokens = lex("let x = 5; if x > 5 { return 1; } else if (x == 5) { return 2; } else { return 3; }");
+  let tokens = lex(r#"
+fn greet(name = "World") {
+    return "Hello, " + name + "!";
+}
+return greet();
+"#);
   match program(tokens) {
     Ok((tokens, tree)) => {
       println!("{:?}", tokens);

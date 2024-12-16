@@ -117,3 +117,58 @@ test_fragment!(while_condition_update, r#"
         }
         return result;
     "#, Ok(Value::Number(5)));
+
+// Basic function returning a constant value
+test_fragment!(function_return_constant, r#"
+fn answer() {
+    return 42;
+}
+return answer();
+"#, Ok(Value::Number(42)));
+
+// Function with parameters and return value
+test_fragment!(function_add, r#"
+fn add(a, b) {
+    return a + b;
+}
+return add(5, 3);
+"#, Ok(Value::Number(8)));
+
+// Function performing multiple operations internally
+test_fragment!(function_calculate, r#"
+fn calculate(a, b) {
+    let sum = a + b;
+    let product = a * b;
+    return sum + product; // e.g., for (5,3): (5+3)+(5*3) = 8+15 = 23
+}
+return calculate(5, 3);
+"#, Ok(Value::Number(23)));
+
+// Function calling another function
+test_fragment!(function_call_chain, r#"
+fn double(x) {
+    return x * 2;
+}
+
+fn quadruple(x) {
+    return double(double(x));
+}
+
+return quadruple(10); // double(10) = 20, double(20) = 40
+"#, Ok(Value::Number(40)));
+
+// Function with a default parameter value
+test_fragment!(function_default_parameter, r#"
+fn greet(name = "Guest") {
+    return "Hello, " + name;
+}
+return greet();
+"#, Ok(Value::String("Hello, Guest".to_string())));
+
+// Calling a function with a provided argument, overriding the default
+test_fragment!(function_default_parameter_with_arg, r#"
+fn greet(name = "Guest") {
+    return "Hello, " + name;
+}
+return greet("Alice");
+"#, Ok(Value::String("Hello, Alice".to_string())));

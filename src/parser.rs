@@ -29,6 +29,7 @@ pub enum Node {
   Expression { children: Vec<Node> },
   FunctionCall { name: Vec<u8>, children: Vec<Node> },
   VariableDefine { children: Vec<Node> },
+  ArgumentDefine { children: Vec<Node> },
   Assignment { children: Vec<Node> },
   FunctionReturn { children: Vec<Node> },
   UnaryExpression { name: Vec<u8>, children: Vec<Node> },
@@ -545,13 +546,39 @@ pub fn variable_define(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, Node::VariableDefine { children: vec![id_node, expr_node] }))
 }
 
-// arguments = expression , { "," , expression } ;
-pub fn arguments(input: Tokens) -> IResult<Tokens, Node> {
-  let (input, exprs) = separated_list0(
-    check_token(&|tk| tk.kind == TokenKind::Comma),
+// argument = identifier [ "=" expression ]
+pub fn argument(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, id_node) = identifier(input)?;
+
+  // Check for a default value
+  let (input, default_opt) = opt(tuple((
+    check_token(&|tk| tk.kind == TokenKind::Equal),
     expression
+  )))(input)?;
+
+  let param_node = if let Some((_, default_expr)) = default_opt {
+    Node::ArgumentDefine {
+      children: vec![id_node, default_expr]
+    }
+  } else {
+    // No default, just store identifier as param
+    // We'll reuse ArgumentDefine node shape:
+    // children[0] = id_node
+    Node::ArgumentDefine {
+      children: vec![id_node]
+    }
+  };
+  Ok((input, param_node))
+}
+
+// arguments = argument { "," argument }
+pub fn arguments(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, params) = separated_list0(
+    check_token(&|tk| tk.kind == TokenKind::Comma),
+    argument
   )(input)?;
-  Ok((input, Node::FunctionArguments { children: exprs }))
+
+  Ok((input, Node::FunctionArguments { children: params }))
 }
 
 // function_define = "fn" , identifier , "(" , [arguments] , ")" , "{" , <statement> , "}" ;
