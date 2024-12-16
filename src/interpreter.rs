@@ -55,14 +55,14 @@ impl Interpreter {
   }
 
   fn eval_binary_op(&self, op: &[u8], left: Value, right: Value) -> Result<Value, AsaErrorKind> {
-    let op_str = std::str::from_utf8(op).unwrap();
+    let op_str = std::str::from_utf8(op)
+      .map_err(|_| AsaErrorKind::Generic("Invalid UTF-8 in operator".to_string()))?;
 
-    if op_str == "==" {
-      return Ok(Value::Bool(left == right));
-    }
+    match (left, right, op_str) {
+      (l_generic, r_generic, "==") => Ok(Value::Bool(l_generic == r_generic)),
+      (l_generic, r_generic, "!=") => Ok(Value::Bool(l_generic != r_generic)),
 
-    match (left, right) {
-      (Value::Number(l_num), Value::Number(r_num)) => {
+      (Value::Number(l_num), Value::Number(r_num), _) => {
         let result = match op_str {
           "+" => Value::Number(l_num + r_num),
           "-" => Value::Number(l_num - r_num),
@@ -81,12 +81,11 @@ impl Interpreter {
           ">" => Value::Bool(l_num > r_num),
           "<=" => Value::Bool(l_num <= r_num),
           ">=" => Value::Bool(l_num >= r_num),
-          "==" => Value::Bool(l_num == r_num),
           _ => return Err(AsaErrorKind::Generic("Unknown operator".to_string())),
         };
         Ok(result)
       }
-      (Value::Bool(l_bool), Value::Bool(r_bool)) => {
+      (Value::Bool(l_bool), Value::Bool(r_bool), _) => {
         let result = match op_str {
           "&&" => Value::Bool(l_bool && r_bool),
           "||" => Value::Bool(l_bool || r_bool),

@@ -194,7 +194,7 @@ pub fn expression(input: Tokens) -> IResult<Tokens, Node> {
   )(input)
 }
 
-// comparison = addition, { ("<" | ">" | "<=" | ">=" | "=="), addition } ; a + 2 < 20
+// comparison = addition, { ("<" | ">" | "<=" | ">=" | "==", "!=", "&&", "||"), addition } ;
 pub fn comparison(input: Tokens) -> IResult<Tokens, Node> {
   let (input, left) = addition(input)?;
 
@@ -202,10 +202,13 @@ pub fn comparison(input: Tokens) -> IResult<Tokens, Node> {
     tuple((
       alt((
         map(check_token(&|tk| tk.kind == TokenKind::EqualEqual), |_| "==".as_bytes().to_vec()),
+        map(check_token(&|tk| tk.kind == TokenKind::NotEqual), |_| "!=".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::LessThan), |_| "<".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::GreaterThan), |_| ">".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::LessThanOrEqual), |_| "<=".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::GreaterThanOrEqual), |_| ">=".as_bytes().to_vec()),
+        map(check_token(&|tk| tk.kind == TokenKind::LogicalAnd), |_| "&&".as_bytes().to_vec()),
+        map(check_token(&|tk| tk.kind == TokenKind::LogicalOr), |_| "||".as_bytes().to_vec()),
       )),
       addition,
     ))

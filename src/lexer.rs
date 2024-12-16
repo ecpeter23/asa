@@ -55,6 +55,7 @@ pub enum TokenKind {
   RightCurly,
   Equal,
   EqualEqual,
+  NotEqual,
   GreaterThan,
   LessThan,
   GreaterThanOrEqual,
@@ -206,7 +207,14 @@ pub fn lex(input: &str) -> Tokens {
           TokenKind::Other
         }
       },
-      33 => TokenKind::LogicalNot,
+      33 => { // '!'
+        if i + 1 < list.len() && list[i + 1] == b'=' {
+          i += 1;
+          TokenKind::NotEqual
+        } else {
+          TokenKind::LogicalNot
+        }
+      }
       59 => TokenKind::Semicolon,
       123 => TokenKind::LeftCurly,
       125 => TokenKind::RightCurly,
