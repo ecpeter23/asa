@@ -8,5 +8,6 @@ pub enum AsaErrorKind {
   DivisionByZero,
   NumberOverflow,
   NumberUnderflow,
+  TypeMismatch(String),
   Generic(String),  
 }

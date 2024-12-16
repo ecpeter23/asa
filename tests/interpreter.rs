@@ -55,3 +55,33 @@ test_fragment!(interpreter_variable_string_return, r#"let s = "SomeString"; s"#,
 test_fragment!(interpreter_equality_check, r#"let foo = true; let bar = false; let baz = foo == bar; return baz;"#, Ok(Value::Bool(false)));
 
 test_fragment!(interpreter_comparison_check, r#"return !(1 > 0) && true;"#, Ok(Value::Bool(false)));
+test_fragment!(conditional_simple_false, r#"1 > 2"#, Ok(Value::Bool(false)));
+test_fragment!(conditional_simple_true, r#"2 > 1"#, Ok(Value::Bool(true)));
+test_fragment!(conditional_boolean_equality_true, r#"true == true"#, Ok(Value::Bool(true)));
+test_fragment!(conditional_boolean_equality_false, r#"true == false"#, Ok(Value::Bool(false)));
+test_fragment!(conditional_variable_comparison, r#"let x = true; x == false"#, Ok(Value::Bool(false)));
+test_fragment!(conditional_variable_compare_booleans, r#"let x = true; let y = false; x > y"#, Err(AsaErrorKind::Generic("Unknown operator for booleans".to_string())));
+
+test_fragment!(invalid_comparison_number_boolean, r#"1 > true"#, Err(AsaErrorKind::TypeMismatch("Type error in binary expression: expected matching types".to_string())));
+test_fragment!(invalid_math_number_boolean, r#"5 - false"#, Err(AsaErrorKind::TypeMismatch("Type error in binary expression: expected matching types".to_string())));
+
+test_fragment!(operator_precedence_example, r#"let x = 10; let y = 5; let result = x > y == true; result"#, Ok(Value::Bool(true)));
+test_fragment!(precedence_complex_1, r#"((3 + 4) * 5 > 2^2) == true"#, Ok(Value::Bool(true)));
+test_fragment!(precedence_complex_2, r#"(10 / 2 + (7 - 3) == 2 * 3) == false"#, Ok(Value::Bool(true)));
+test_fragment!(precedence_complex_3, r#"(4^2 - 3 * 5 < 20 && 6 > 2) == true"#, Ok(Value::Bool(true)));
+test_fragment!(precedence_complex_4, r#"((8 - 2) * 3 != 5 * 2 || 10 > 2^3) == true"#, Ok(Value::Bool(true)));
+test_fragment!(precedence_complex_5, r#"((6 + 3) * 2 == 15 && ((4 * 2) > 7)) == false"#, Ok(Value::Bool(true)));
+
+test_fragment!(full_math_expression_1, r#"let x = ((2 + 3) * 4 - 8) / (2 ^ 2);"#, Ok(Value::Number(3)));
+test_fragment!(full_math_expression_2, r#"((1 + 2) * (3 + 4))"#, Ok(Value::Number(21)));
+test_fragment!(full_math_expression_3, r#"2 ^ 3"#, Ok(Value::Number(8)));
+test_fragment!(full_math_expression_4, r#"0 / 1"#, Ok(Value::Number(0)));
+test_fragment!(full_math_expression_5, r#"let a = 10; let b = a + 5;"#, Ok(Value::Number(15)));
+
+test_fragment!(boolean_comparison_true, r#"(2 > 1)"#, Ok(Value::Bool(true)));
+test_fragment!(boolean_comparison_false, r#"(1 > 2)"#, Ok(Value::Bool(false)));
+test_fragment!(boolean_equality_check, r#"let foo = true; let bar = false; let baz = foo == bar; return baz;"#, Ok(Value::Bool(false)));
+test_fragment!(boolean_not_operator, r#"return !(1 > 0) && true;"#, Ok(Value::Bool(false)));
+test_fragment!(boolean_complex_expression, r#"(2 > 1 && 3 > 2) || (5 < 4)"#, Ok(Value::Bool(true)));
+
+

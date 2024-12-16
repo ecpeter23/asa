@@ -93,7 +93,7 @@ impl Interpreter {
         };
         Ok(result)
       }
-      _ => Err(AsaErrorKind::Generic(
+      _ => Err(AsaErrorKind::TypeMismatch(
         "Type error in binary expression: expected matching types".to_string(),
       )),
     }

@@ -178,11 +178,11 @@ pub fn value(input: Tokens) -> IResult<Tokens, Node> {
   alt((number, identifier, boolean, string))(input) /* TRIES TO PARSE WITH NUMBER, IDENTIFIER, BOOLEAN AND STRING RETURNS WHICHEVER WORKS */
 }
 
-// expression = comparison | boolean | addition | function_call | number | string | identifier ;
+// expression = logical_or | boolean | addition | function_call | number | string | identifier ;
 pub fn expression(input: Tokens) -> IResult<Tokens, Node> {
   map(
     alt((
-      comparison,
+      logical_or,
       boolean,
       function_call,
       addition,
@@ -194,21 +194,79 @@ pub fn expression(input: Tokens) -> IResult<Tokens, Node> {
   )(input)
 }
 
-// comparison = addition, { ("<" | ">" | "<=" | ">=" | "==", "!=", "&&", "||"), addition } ;
-pub fn comparison(input: Tokens) -> IResult<Tokens, Node> {
-  let (input, left) = addition(input)?;
+// logical_or = logical_and { "||" logical_and }
+pub fn logical_or(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, left) = logical_and(input)?;
+  let (input, rest) = many0(
+    tuple((
+      map(check_token(&|tk| tk.kind == TokenKind::LogicalOr), |_| "||".as_bytes().to_vec()),
+      logical_and,
+    ))
+  )(input)?;
 
+  let node = rest.into_iter().fold(left, |acc, (op, right)| {
+    Node::BinaryExpression {
+      name: op,
+      children: vec![acc, right],
+    }
+  });
+
+  Ok((input, node))
+}
+
+// logical_and = equality { "&&" equality }
+pub fn logical_and(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, left) = equality(input)?;
+  let (input, rest) = many0(
+    tuple((
+      map(check_token(&|tk| tk.kind == TokenKind::LogicalAnd), |_| "&&".as_bytes().to_vec()),
+      equality,
+    ))
+  )(input)?;
+
+  let node = rest.into_iter().fold(left, |acc, (op, right)| {
+    Node::BinaryExpression {
+      name: op,
+      children: vec![acc, right],
+    }
+  });
+
+  Ok((input, node))
+}
+
+// equality = comparison { ("==" | "!=") comparison }
+pub fn equality(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, left) = comparison(input)?;
   let (input, rest) = many0(
     tuple((
       alt((
         map(check_token(&|tk| tk.kind == TokenKind::EqualEqual), |_| "==".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::NotEqual), |_| "!=".as_bytes().to_vec()),
+      )),
+      comparison,
+    ))
+  )(input)?;
+
+  let node = rest.into_iter().fold(left, |acc, (op, right)| {
+    Node::BinaryExpression {
+      name: op,
+      children: vec![acc, right],
+    }
+  });
+
+  Ok((input, node))
+}
+
+// comparison = addition { ("<" | ">" | "<=" | ">=") addition }
+pub fn comparison(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, left) = addition(input)?;
+  let (input, rest) = many0(
+    tuple((
+      alt((
         map(check_token(&|tk| tk.kind == TokenKind::LessThan), |_| "<".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::GreaterThan), |_| ">".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::LessThanOrEqual), |_| "<=".as_bytes().to_vec()),
         map(check_token(&|tk| tk.kind == TokenKind::GreaterThanOrEqual), |_| ">=".as_bytes().to_vec()),
-        map(check_token(&|tk| tk.kind == TokenKind::LogicalAnd), |_| "&&".as_bytes().to_vec()),
-        map(check_token(&|tk| tk.kind == TokenKind::LogicalOr), |_| "||".as_bytes().to_vec()),
       )),
       addition,
     ))
