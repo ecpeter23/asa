@@ -53,3 +53,5 @@ test_fragment!(interpreter_return_variable_value, r#"let a = 2; a"#, Ok(Value::N
 test_fragment!(interpreter_boolean_comparison, r#"(2 > 1)"#, Ok(Value::Bool(true)));
 test_fragment!(interpreter_variable_string_return, r#"let s = "SomeString"; s"#, Ok(Value::String("SomeString".to_string())));
 test_fragment!(interpreter_equality_check, r#"let foo = true; let bar = false; let baz = foo == bar; return baz;"#, Ok(Value::Bool(false)));
+
+test_fragment!(interpreter_comparison_check, r#"return !(1 > 0) && true;"#, Ok(Value::Bool(false)));
