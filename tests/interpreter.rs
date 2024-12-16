@@ -84,8 +84,36 @@ test_fragment!(boolean_equality_check, r#"let foo = true; let bar = false; let b
 test_fragment!(boolean_not_operator, r#"return !(1 > 0) && true;"#, Ok(Value::Bool(false)));
 test_fragment!(boolean_complex_expression, r#"(2 > 1 && 3 > 2) || (5 < 4)"#, Ok(Value::Bool(true)));
 
+// ### If-Expressions
+// Simple if/else returning boolean values
+test_fragment!(if_simple_true, r#"if true { return false; } else { return true; }"#, Ok(Value::Bool(false)));
+test_fragment!(if_simple_false, r#"if false { return false; } else { return true; }"#, Ok(Value::Bool(true)));
+
+// Using if-expressions with variables
+test_fragment!(if_variable_assign_true, r#"let x = if true { return false; } else { return true; }; return x;"#, Ok(Value::Bool(false)));
+test_fragment!(if_variable_assign_false, r#"let x = if false { return false; } else { return true; }; return x;"#, Ok(Value::Bool(true)));
+
+// Chained else-if
+test_fragment!(if_else_if, r#"let x = 5; if x > 5 { return 1; } else if x == 5 { return 2; } else { return 3; }"#, Ok(Value::Number(2)));
+
+// Double if statement (from the provided examples)
 test_fragment!(double_if_statement, r#"let x = 0; let y = 0; if (x < 10) { if (y < 5) { y = 5; } x = 10; } return x + y;"#, Ok(Value::Number(15)));
 
-test_fragment!(double_while_loop, r#"let x = 0; let y = 0; while (x < 10) { while (y < 5) { y = y + 1;} x = x + 1; } return x + y;"#, Ok(Value::Number(15)));
+// ### While-Loops
+// Simple while loop
+test_fragment!(while_loop_decrement, r#"let x = 5; while (x > 0) { x = x - 1; } return x;"#, Ok(Value::Number(0)));
 
+// Nested while loop (from the provided examples)
+test_fragment!(double_while_loop, r#"let x = 0; let y = 0; while (x < 10) { while (y < 5) { y = y + 1; } x = x + 1; } return x + y;"#, Ok(Value::Number(15)));
 
+// While loop with break
+test_fragment!(while_with_break, r#"let x = 0; while true { x = x + 1; if x > 5 {break;} } return x;"#, Ok(Value::Number(6)));
+
+// While loop condition checking each iteration
+test_fragment!(while_condition_update, r#"
+        let result = 0;
+        while (result < 5) {
+            result = result + 1;
+        }
+        return result;
+    "#, Ok(Value::Number(5)));

@@ -44,6 +44,7 @@ pub enum TokenKind {
   Return,
   Let,
   If,
+  // ElseIf,
   Else,
   While,
   //------

@@ -1,6 +1,8 @@
 
 // You are free to add more error variants if you need them.
 
+use crate::Value;
+
 #[derive(Debug,PartialEq)]
 pub enum AsaErrorKind {
   UndefinedFunction,
@@ -9,5 +11,8 @@ pub enum AsaErrorKind {
   NumberOverflow,
   NumberUnderflow,
   TypeMismatch(String),
-  Generic(String),  
+  Generic(String),
+  BreakSignal,
+  ContinueSignal,
+  ReturnSignal(Value),
 }

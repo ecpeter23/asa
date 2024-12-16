@@ -67,6 +67,12 @@ impl Interpreter {
           "+" => Value::Number(l_num + r_num),
           "-" => Value::Number(l_num - r_num),
           "*" => Value::Number(l_num * r_num),
+          "%" => {
+            if r_num == 0 {
+              return Err(AsaErrorKind::Generic("Modulo by zero".to_string()));
+            }
+            Value::Number(l_num % r_num)
+          },
           "/" => {
             if r_num == 0 {
               return Err(AsaErrorKind::Generic("Division by zero".to_string()));
@@ -115,20 +121,13 @@ impl Interpreter {
       Node::Program{children} => {
         let mut last = Value::Bool(true); // default if empty
         for n in children {
-          let val = match n {
-            Node::Expression{..} |
-            Node::VariableDefine{..} |
-            Node::String{..} |
-            Node::Number{..} |
-            Node::Bool{..} |
-            Node::Statement{..} |
-            Node::Block{..} |
-            Node::IfExpression{..} |
-            Node::WhileLoop{..} |
-            Node::FunctionReturn{..} => {
-              self.exec(n)?
-            }
-            _ => unreachable!(),
+          let val = match self.exec(n) {
+            Ok(val) => val,
+            Err(AsaErrorKind::ReturnSignal(val)) => {
+              // Stop executing further and return this value immediately
+              return Ok(val);
+            },
+            Err(e) => return Err(e),
           };
           last = val;
         }
@@ -192,30 +191,44 @@ impl Interpreter {
         Err(AsaErrorKind::Generic("Function statements not implemented".to_string()))
       },
       Node::IfExpression { children } => {
-        // children[0] = condition
-        // children[1] = then block
-        // children[2] = else block (optional)
+        // children layout:
+        // [if_condition, if_block, else_if_condition, else_if_block, ..., else_block(optional)]
+        //
+        // Conditions and blocks come in pairs. For each condition-block pair:
+        // - even index: condition
+        // - odd index: block
+        //
+        // If there's an extra child at the end (odd number of children overall),
+        // that last child is the else block.
 
-        let condition_value = self.exec(&children[0])?;
-        match condition_value {
-          Value::Bool(true) => {
-            // Condition is true: execute the 'then' block
-            self.exec(&children[1])
-          },
-          Value::Bool(false) => {
-            // Condition is false: if there's an else block, execute it
-            // otherwise, just return a default value (e.g., Bool(true) or Null)
-            if children.len() > 2 {
-              self.exec(&children[2])
-            } else {
-              Ok(Value::Bool(true)) // or whatever default value you choose
+        let mut index = 0;
+        while index < children.len() - 1 {
+          let condition_value = self.exec(&children[index])?;
+          match condition_value {
+            Value::Bool(true) => {
+              // Condition matched: execute this block
+              return self.exec(&children[index + 1]);
+            },
+            Value::Bool(false) => {
+              // Condition not met, move to next pair
+            },
+            _ => {
+              return Err(AsaErrorKind::TypeMismatch(
+                "If/Else-If condition must be boolean".to_string()
+              ));
             }
-          },
-          _ => {
-            // If the condition doesn't evaluate to a boolean,
-            // report a type error or handle it as you see fit.
-            Err(AsaErrorKind::TypeMismatch("If condition must be boolean".to_string()))
           }
+          index += 2;
+        }
+
+        // If we get here, none of the conditions were true.
+        // Check if there's an else block.
+        if children.len() % 2 == 1 {
+          // There's an extra child at the end, which is the else block
+          self.exec(&children[children.len() - 1])
+        } else {
+          // No else block - return a default value.
+          Ok(Value::Bool(true))
         }
       }
       Node::WhileLoop{children} => {
@@ -227,7 +240,23 @@ impl Interpreter {
           match condition_value {
             Value::Bool(true) => {
               // Condition is true, execute the body block
-              self.exec(&children[1])?;
+              match self.exec(&children[1]) {
+                Ok(_) => {
+                  // Body executed successfully with no break or continue, loop again
+                },
+                Err(AsaErrorKind::BreakSignal) => {
+                  // Break out of the loop
+                  break Ok(Value::Bool(true));
+                },
+                Err(AsaErrorKind::ContinueSignal) => {
+                  // Skip to next iteration (re-check condition)
+                  continue;
+                },
+                Err(e) => {
+                  // Other error, propagate upwards
+                  return Err(e);
+                }
+              }
             },
             Value::Bool(false) => {
               // Condition is false, stop looping and return default value
@@ -267,7 +296,7 @@ impl Interpreter {
       Node::FunctionReturn{children} => {
         // Not tested
         let val = self.exec(&children[0])?;
-        Ok(val)
+        Err(AsaErrorKind::ReturnSignal(val))
       },
       Node::Null => {
         Ok(Value::Bool(true))
@@ -278,6 +307,14 @@ impl Interpreter {
           last = self.exec(c)?;
         }
         Ok(last)
+      },
+      Node::Break => {
+        // Not tested
+        Err(AsaErrorKind::BreakSignal)
+      },
+      Node::Continue => {
+        // Not tested
+        Err(AsaErrorKind::ContinueSignal)
       },
     }
   }

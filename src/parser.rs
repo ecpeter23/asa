@@ -9,7 +9,7 @@ use nom::{
   combinator::{opt, map},
   multi::{many1, many0, separated_list0},
   error::{ErrorKind},
-  sequence::{tuple, terminated}
+  sequence::{tuple, terminated, delimited}
 };
 use crate::lexer::*;
 
@@ -285,43 +285,77 @@ pub fn comparison(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, node))
 }
 
-// if_expression = "if" , "(" , expression , ")" , "{" , <statements> , "}" , [ "else" , "{" , <statements> , "}" ] ;
+// if_expression = "if" , "(" , expression , ")" , "{" , <statements> , "}"
+//                { "else" "if" "(" expression ")" "{" <statements> "}" }
+//                [ "else" "{" <statements> "}" ];
 pub fn if_expression(input: Tokens) -> IResult<Tokens, Node> {
+  // Parse the initial if
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::If)(input)?;
-  let (input, _) = check_token(&|tk| tk.kind == TokenKind::LeftParen)(input)?;
-  let (input, condition) = expression(input)?;
-  let (input, _) = check_token(&|tk| tk.kind == TokenKind::RightParen)(input)?;
+  let (input, condition) = alt((
+    // With parentheses
+    delimited(
+      check_token(&|tk| tk.kind == TokenKind::LeftParen),
+      expression,
+      check_token(&|tk| tk.kind == TokenKind::RightParen),
+    ),
+    // Without parentheses
+    expression,
+  ))(input)?;
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::LeftCurly)(input)?;
   let (input, then_statements) = block(input)?;
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::RightCurly)(input)?;
 
-  let (input, else_branch) = opt(
-    tuple((
-      check_token(&|tk| tk.kind == TokenKind::Else),
-      check_token(&|tk| tk.kind == TokenKind::LeftCurly),
-      block,
-      check_token(&|tk| tk.kind == TokenKind::RightCurly),
-    ))
-  )(input)?;
-
   let mut children = vec![condition, then_statements];
+
+  // Parse zero or more else if branches
+  let (input, else_if_branches) = many0(tuple((
+    check_token(&|tk| tk.kind == TokenKind::Else),
+    check_token(&|tk| tk.kind == TokenKind::If),
+    alt((
+      delimited(
+        check_token(&|tk| tk.kind == TokenKind::LeftParen),
+        expression,
+        check_token(&|tk| tk.kind == TokenKind::RightParen),
+      ),
+      expression,
+    )),
+    check_token(&|tk| tk.kind == TokenKind::LeftCurly),
+    block,
+    check_token(&|tk| tk.kind == TokenKind::RightCurly),
+  )))(input)?;
+
+  // For each else if branch parsed, add condition and block to children
+  for (_, _, else_if_condition, _, else_if_block, _) in else_if_branches {
+    children.push(else_if_condition);
+    children.push(else_if_block);
+  }
+
+  // Parse optional else branch
+  let (input, else_branch) = opt(tuple((
+    check_token(&|tk| tk.kind == TokenKind::Else),
+    check_token(&|tk| tk.kind == TokenKind::LeftCurly),
+    block,
+    check_token(&|tk| tk.kind == TokenKind::RightCurly),
+  )))(input)?;
 
   if let Some((_, _, else_stmts, _)) = else_branch {
     children.push(else_stmts);
   }
 
-  Ok((
-    input,
-    Node::IfExpression { children },
-  ))
+  Ok((input, Node::IfExpression { children }))
 }
 
 // while_loop = "while" , "(" , expression , ")" , "{" , <statements> , "}" ;
 pub fn while_loop(input: Tokens) -> IResult<Tokens, Node> {
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::While)(input)?;
-  let (input, _) = check_token(&|tk| tk.kind == TokenKind::LeftParen)(input)?;
-  let (input, condition) = expression(input)?;
-  let (input, _) = check_token(&|tk| tk.kind == TokenKind::RightParen)(input)?;
+  let (input, condition) = alt((
+    delimited(
+      check_token(&|tk| tk.kind == TokenKind::LeftParen),
+      expression,
+      check_token(&|tk| tk.kind == TokenKind::RightParen),
+    ),
+    expression,
+  ))(input)?;
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::LeftCurly)(input)?;
   let (input, body_stmts) = block(input)?;
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::RightCurly)(input)?;
@@ -473,6 +507,7 @@ pub fn primary(input: Tokens) -> IResult<Tokens, Node> {
 // statement = variable_define , ";" | assignment , ";" | function_return , ";" | if_expression | while_loop ;
 pub fn statement(input: Tokens) -> IResult<Tokens, Node> {
   let (input, stmt_node) = alt((
+    // if_expression,
     map(terminated(variable_define, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(assignment, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(function_return, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
