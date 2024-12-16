@@ -344,7 +344,7 @@ pub fn continue_statement(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, Node::Continue))
 }
 
-// addition = multiplication , { ("+" | "-") , multiplication } ;
+// addition = multiplication , { ("+" | "-", "%") , multiplication } ;
 pub fn addition(input: Tokens) -> IResult<Tokens, Node> {
   let (input, first_mul) = multiplication(input)?;
   let (input, rest) = many0(
@@ -352,6 +352,7 @@ pub fn addition(input: Tokens) -> IResult<Tokens, Node> {
       alt((
         check_token(&|tk| tk.kind == TokenKind::Plus),
         check_token(&|tk| tk.kind == TokenKind::Dash),
+        check_token(&|tk| tk.kind == TokenKind::Modulus),
       )),
       multiplication,
     ))
@@ -361,6 +362,7 @@ pub fn addition(input: Tokens) -> IResult<Tokens, Node> {
     let op_name = match op_token.kind {
       TokenKind::Plus => b"+".to_vec(),
       TokenKind::Dash => b"-".to_vec(),
+      TokenKind::Modulus => b"%".to_vec(),
       _ => vec![],
     };
     Node::BinaryExpression {
