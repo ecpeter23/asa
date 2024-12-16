@@ -32,13 +32,13 @@ impl Interpreter {
     }
   }
 
-  fn hash_identifier(name: &[u8]) -> u64 {
+  pub fn hash_identifier(name: &[u8]) -> u64 {
     let mut hasher = DefaultHasher::new();
     name.hash(&mut hasher);
     hasher.finish()
   }
 
-  fn get_variable(&self, id: u64) -> Result<Value, AsaErrorKind> {
+  pub fn get_variable(&self, id: u64) -> Result<Value, AsaErrorKind> {
     for frame in self.stack.iter().rev() {
       if let Some(val) = frame.get(&id) {
         return Ok(val.clone());
@@ -153,7 +153,7 @@ impl Interpreter {
     }
   }
 
-  fn call_function(&mut self, func_val: Value, arg_nodes: &[Node]) -> Result<Value, AsaErrorKind> {
+  pub fn call_function(&mut self, func_val: Value, arg_nodes: &[Node]) -> Result<Value, AsaErrorKind> {
     match func_val {
       Value::Function { params, body } => {
         if arg_nodes.len() > params.len() {
