@@ -47,6 +47,8 @@ pub enum TokenKind {
   Else,
   While,
   //------
+  Break,
+  Continue,
   Alpha,
   Digit,
   LeftParen,
@@ -283,6 +285,29 @@ pub fn lex(input: &str) -> Tokens {
         }
       }
     }
+
+    //check if break
+    if c == b'b' {
+      if i + 4 < list.len(){
+        if list[i + 1] == b'r' && list[i + 2] == b'e' && list[i + 3] == b'a' && list[i + 4] == b'k' {
+          kind = TokenKind::Break;
+          i += 4;
+          diff = 4;
+        }
+      }
+    }
+
+    //check if continue
+    if c == b'c' {
+      if i + 7 < list.len(){
+        if list[i + 1] == b'o' && list[i + 2] == b'n' && list[i + 3] == b't' && list[i + 4] == b'i' && list[i + 5] == b'n' && list[i + 6] == b'u' && list[i + 7] == b'e' {
+          kind = TokenKind::Continue;
+          i += 7;
+          diff = 7;
+        }
+      }
+    }
+
     //check if let
     if c == b'l' {
       if i + 2 < list.len(){
