@@ -61,33 +61,43 @@ impl Interpreter {
       return Ok(Value::Bool(left == right));
     }
 
-    // For other operators, we assume numeric operands for now
-    let (l_num, r_num) = match (left, right) {
-      (Value::Number(l), Value::Number(r)) => (l, r),
-      _ => return Err(AsaErrorKind::Generic("Type error in binary expression: expected numbers".to_string())),
-    };
-
-    let result = match op_str {
-      "+" => Value::Number(l_num + r_num),
-      "-" => Value::Number(l_num - r_num),
-      "*" => Value::Number(l_num * r_num),
-      "/" => {
-        if r_num == 0 {
-          return Err(AsaErrorKind::Generic("Division by zero".to_string()));
-        }
-        Value::Number(l_num / r_num)
-      },
-      "^" => {
-        let val = i32::pow(l_num, r_num as u32);
-        Value::Number(val)
+    match (left, right) {
+      (Value::Number(l_num), Value::Number(r_num)) => {
+        let result = match op_str {
+          "+" => Value::Number(l_num + r_num),
+          "-" => Value::Number(l_num - r_num),
+          "*" => Value::Number(l_num * r_num),
+          "/" => {
+            if r_num == 0 {
+              return Err(AsaErrorKind::Generic("Division by zero".to_string()));
+            }
+            Value::Number(l_num / r_num)
+          },
+          "^" => {
+            let val = i32::pow(l_num, r_num as u32);
+            Value::Number(val)
+          }
+          "<" => Value::Bool(l_num < r_num),
+          ">" => Value::Bool(l_num > r_num),
+          "<=" => Value::Bool(l_num <= r_num),
+          ">=" => Value::Bool(l_num >= r_num),
+          "==" => Value::Bool(l_num == r_num),
+          _ => return Err(AsaErrorKind::Generic("Unknown operator".to_string())),
+        };
+        Ok(result)
       }
-      "<" => Value::Bool(l_num < r_num),
-      ">" => Value::Bool(l_num > r_num),
-      "<=" => Value::Bool(l_num <= r_num),
-      ">=" => Value::Bool(l_num >= r_num),
-      _ => return Err(AsaErrorKind::Generic("Unknown operator".to_string())),
-    };
-    Ok(result)
+      (Value::Bool(l_bool), Value::Bool(r_bool)) => {
+        let result = match op_str {
+          "&&" => Value::Bool(l_bool && r_bool),
+          "||" => Value::Bool(l_bool || r_bool),
+          _ => return Err(AsaErrorKind::Generic("Unknown operator for booleans".to_string())),
+        };
+        Ok(result)
+      }
+      _ => Err(AsaErrorKind::Generic(
+        "Type error in binary expression: expected matching types".to_string(),
+      )),
+    }
   }
 
   fn eval_unary_op(&self, op: &[u8], val: Value) -> Result<Value, AsaErrorKind> {
