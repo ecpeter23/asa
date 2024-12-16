@@ -124,27 +124,8 @@ pub fn boolean(input: Tokens) -> IResult<Tokens, Node> {
 
 // string = "\"" , {alnum | " "} , "\"" ;
 pub fn string(input: Tokens) -> IResult<Tokens, Node> {
-  let (input, _) = check_token(&|tk| tk.kind == TokenKind::Quote)(input)?;
-
-  let (input, chars) = many0(alt((
-    map(
-      check_token(&|tk| {
-        matches!(
-                    tk.kind,
-                    TokenKind::Alpha | TokenKind::Digit | TokenKind::Other | TokenKind::WhiteSpace
-                )
-      }),
-      |tk| tk.clone(),
-    ),
-  )))(input)?;
-
-  let (input, _) = check_token(&|tk| tk.kind == TokenKind::Quote)(input)?;
-
-  let mut string_content = Vec::new();
-  for token in chars {
-    string_content.extend(&token.lexeme);
-  }
-  Ok((input, Node::String { value: string_content }))
+  let (input, str_token) = check_token(&|tk| tk.kind == TokenKind::StringLiteral)(input)?;
+  Ok((input, Node::String { value: str_token.lexeme }))
 }
 
 // function_call = identifier , "(" , [arguments] , ")" ;

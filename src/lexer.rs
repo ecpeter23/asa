@@ -77,6 +77,7 @@ pub enum TokenKind {
   Comma,
   Slash,
   Other,
+  StringLiteral,
   EOF,
 }
 
@@ -167,6 +168,61 @@ pub fn lex(input: &str) -> Tokens {
   let mut diff = 0;
   while i < list.len() {
     let c = list[i];
+
+    if c == b'"' {
+      // We've encountered an opening quote, now we consume until the next quote
+      let start_col = col;
+      let start_line = line;
+      i += 1;
+      col += 1;
+
+      let mut string_content = Vec::new();
+      while i < list.len() && list[i] != b'"' {
+        // Keep track of lines in case of multi-line strings
+        if list[i] == b'\n' {
+          line += 1;
+          col = 1;
+        } else {
+          col += 1;
+        }
+        string_content.push(list[i]);
+        i += 1;
+      }
+
+      // If we reached EOF without finding a closing quote, this is an error scenario.
+      // For simplicity, let's assume well-formed input. Otherwise, handle as needed:
+      if i >= list.len() {
+        // Unterminated string handling could go here
+        // We'll just push what we have as Other or handle error
+        let token = Token {
+          kind: TokenKind::StringLiteral,
+          lexeme: string_content,
+          start_line,
+          end_line: line,
+          start_col,
+          end_col: col,
+        };
+        tokens.push(token);
+        break;
+      }
+
+      // Now we have the closing quote
+      // Advance past the closing quote
+      i += 1;
+      col += 1;
+
+      let token = Token {
+        kind: TokenKind::StringLiteral,
+        lexeme: string_content,
+        start_line,
+        end_line: line,
+        start_col,
+        end_col: col - 1, // The last character was the closing quote
+      };
+      tokens.push(token);
+      continue;
+    }
+
     let mut kind = match c {
       48..=57 => TokenKind::Digit,
       65..=90 | 97..=122 => TokenKind::Alpha,
