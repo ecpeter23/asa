@@ -128,12 +128,21 @@ pub fn string(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, Node::String { value: str_token.lexeme }))
 }
 
+pub fn call_arguments(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, exprs) = separated_list0(
+    check_token(&|tk| tk.kind == TokenKind::Comma),
+    expression // parse arbitrary expressions as arguments
+  )(input)?;
+
+  Ok((input, Node::FunctionArguments { children: exprs }))
+}
+
 // function_call = identifier , "(" , [arguments] , ")" ;
 pub fn function_call(input: Tokens) -> IResult<Tokens, Node> {
   let (input, (name_node, _, args_opt, _)) = tuple((
     identifier,
     check_token(&|tk| tk.kind == TokenKind::LeftParen),
-    opt(arguments),
+    opt(call_arguments), // Use call_arguments parser here
     check_token(&|tk| tk.kind == TokenKind::RightParen)
   ))(input)?;
 

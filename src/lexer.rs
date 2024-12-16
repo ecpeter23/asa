@@ -169,6 +169,25 @@ pub fn lex(input: &str) -> Tokens {
   while i < list.len() {
     let c = list[i];
 
+    if c == b'/' && i + 1 < list.len() && list[i + 1] == b'/' {
+      // Move past the //
+      i += 2;
+      col += 2;
+      // Skip until newline or EOF
+      while i < list.len() && list[i] != b'\n' {
+        i += 1;
+        col += 1;
+      }
+      // If we hit a newline, consume it and move to next line
+      if i < list.len() && list[i] == b'\n' {
+        line += 1;
+        col = 1;
+        i += 1;
+      }
+      // Continue to the top of the loop, skipping token creation
+      continue;
+    }
+
     if c == b'"' {
       // We've encountered an opening quote, now we consume until the next quote
       let start_col = col;

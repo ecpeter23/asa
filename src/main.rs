@@ -6,10 +6,12 @@ use asalang::*;
 fn main() -> Result<(), AsaErrorKind> {
   
   let tokens = lex(r#"
-fn greet(name = "World") {
-    return "Hello, " + name + "!";
+fn calculate(a, b) {
+    let sum = a + b;
+    let product = a * b;
+    return sum + product; // e.g., for (5,3): (5+3)+(5*3) = 8+15 = 23
 }
-return greet();
+return calculate(5, 3);
 "#);
   match program(tokens) {
     Ok((tokens, tree)) => {
