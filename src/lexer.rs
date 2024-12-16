@@ -59,6 +59,9 @@ pub enum TokenKind {
   LessThan,
   GreaterThanOrEqual,
   LessThanOrEqual,
+  LogicalAnd,
+  LogicalOr,
+  LogicalNot,
   Plus,
   Dash,
   Multiply,
@@ -187,6 +190,23 @@ pub fn lex(input: &str) -> Tokens {
           TokenKind::LessThan
         }
       },
+      38 => { // '&'
+        if i + 1 < list.len() && list[i + 1] == b'&' {
+          i += 1;
+          TokenKind::LogicalAnd
+        } else {
+          TokenKind::Other
+        }
+      },
+      124 => { // '|'
+        if i + 1 < list.len() && list[i + 1] == b'|' {
+          i += 1;
+          TokenKind::LogicalOr
+        } else {
+          TokenKind::Other
+        }
+      },
+      33 => TokenKind::LogicalNot,
       59 => TokenKind::Semicolon,
       123 => TokenKind::LeftCurly,
       125 => TokenKind::RightCurly,
