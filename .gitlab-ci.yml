@@ -1,0 +1,10 @@
+image: "rust:latest"
+
+test:cargo:
+  script:
+  - rustup default nightly-2024-04-22
+  - rustup show
+  - rustc --version && cargo --version
+  - cargo test lexer
+  - cargo test parser
+  - cargo test interpreter
