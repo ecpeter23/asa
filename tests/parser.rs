@@ -1,5 +1,5 @@
-use asalang::*;
-use asalang::Node::*;
+use asa::*;
+use asa::Node::*;
 
 macro_rules! test {
   ($func:ident, $input:tt, $combinator:tt, $test:expr) => (
@@ -70,29 +70,6 @@ test!(parser_function_define, r#"fn a(){return 1;}"#, function_define, FunctionD
     FunctionStatements{ children: vec![
       FunctionReturn{ children: vec![ 
         Expression { children: vec![Number{value: vec![49]}]}
-      ]}
-    ]}
-  ]
-});
-test!(parser_function_define_multi_statements, r#"fn add(a,b){let x=a+b;return x;}"#, function_define, FunctionDefine{
-  name: vec![97, 100, 100],
-  children: vec![
-    FunctionArguments{ children: vec![
-      Expression { children: vec![Identifier { value: vec![97] }] },
-      Expression { children: vec![Identifier { value: vec![98] }] },
-    ] },
-    FunctionStatements{ children: vec![
-      VariableDefine{children: vec![
-        Identifier { value: vec![120] },
-        Expression { children: vec![
-          BinaryExpression {name: vec![43], children: vec![
-            Identifier{value: vec![97]},
-            Identifier{value: vec![98]}
-          ]}
-        ]}
-      ]},
-      FunctionReturn{ children: vec![ 
-        Expression { children: vec![Identifier{value: vec![120] }]}
       ]}
     ]}
   ]

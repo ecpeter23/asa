@@ -1,4 +1,4 @@
-use asalang::*;
+use asa::*;
 
 fn test_lex(input: &str) -> Vec<TokenKind> {
   lex(input).tokens.iter().map(|t| t.get_kind()).collect::<Vec<TokenKind>>()
