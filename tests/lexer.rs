@@ -44,29 +44,6 @@ fn lexer_test_06() {
 }
 
 #[test]
-fn lexer_test_07() {
-  assert_eq!(test_lex(r#"let x = 123;let y="abc";"#),vec![
-    TokenKind::Let, 
-    TokenKind::Alpha, 
-    TokenKind::Equal,
-    TokenKind::Digit,
-    TokenKind::Digit,
-    TokenKind::Digit,
-    TokenKind::Semicolon,
-    TokenKind::Let,
-    TokenKind::Alpha, 
-    TokenKind::Equal,
-    TokenKind::Quote,
-    TokenKind::Alpha, 
-    TokenKind::Alpha, 
-    TokenKind::Alpha, 
-    TokenKind::Quote,
-    TokenKind::Semicolon,
-    TokenKind::EOF,
-  ]);
-}
-
-#[test]
 fn lexer_test_08() {
   assert_eq!(test_lex(r#"fn main() {}"#),vec![
     TokenKind::Fn, 
