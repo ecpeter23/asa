@@ -1,0 +1,114 @@
+(*
+Grammar for the custom programming language parsed by the provided Nom-based Rust parser.
+*)
+
+(* Entry Point *)
+Program         ::= { FunctionDefine | Statement | Comment }
+
+(* Function Definition *)
+FunctionDefine  ::= "fn" Identifier "(" [ Arguments ] ")" "{" { Statement | Comment } "}"
+
+Arguments       ::= Argument { "," Argument }
+
+Argument        ::= Identifier [ "=" Expression ]
+
+(* Statements *)
+Statement       ::= VariableDefine ";"
+| Assignment ";"
+| FunctionReturn ";"
+| FunctionCall ";"
+| BreakStatement ";"
+| ContinueStatement ";"
+| IfExpression
+| WhileLoop
+
+VariableDefine  ::= "let" Identifier "=" Expression
+
+Assignment      ::= LValue "=" Expression
+
+FunctionReturn  ::= "return" ( FunctionCall | Expression | Identifier )
+
+FunctionCall    ::= Identifier "(" [ CallArguments ] ")"
+
+CallArguments   ::= Expression { "," Expression }
+
+BreakStatement  ::= "break"
+
+ContinueStatement ::= "continue"
+
+(* Control Structures *)
+IfExpression    ::= "if" "(" Expression ")" "{" { Statement | Comment } "}"
+{ "else" "if" "(" Expression ")" "{" { Statement | Comment } "}" }
+[ "else" "{" { Statement | Comment } "}" ]
+
+WhileLoop       ::= "while" "(" Expression ")" "{" { Statement | Comment } "}"
+
+(* Expressions *)
+Expression      ::= LogicalOr
+
+LogicalOr       ::= LogicalAnd { "||" LogicalAnd }
+
+LogicalAnd      ::= Equality { "&&" Equality }
+
+Equality        ::= Comparison { ( "==" | "!=" ) Comparison }
+
+Comparison      ::= Addition { ( "<" | ">" | "<=" | ">=" ) Addition }
+
+Addition        ::= Multiplication { ( "+" | "-" | "%" ) Multiplication }
+
+Multiplication  ::= Exponentiation { ( "*" | "/" ) Exponentiation }
+
+Exponentiation  ::= Unary { "^" Unary }
+
+Unary           ::= [ ( "+" | "-" | "!" ) ] Postfix
+
+Postfix         ::= Primary
+{ ( "." Identifier )
+| ( "[" Expression "]" )
+| FunctionCall }
+
+Primary         ::= Number
+| Identifier
+| Boolean
+| String
+| ArrayLiteral
+| "(" Expression ")"
+
+(* LValues *)
+LValue          ::= Identifier
+| PropertyAccess
+| IndexAccess
+
+PropertyAccess  ::= Identifier "." Identifier
+
+IndexAccess     ::= Identifier "[" Expression "]"
+
+(* Literals *)
+Number          ::= Digit { Digit }
+
+Boolean         ::= "true" | "false"
+
+String          ::= "\"" { Alphanumeric | " " } "\""
+
+ArrayLiteral    ::= "[" [ Expression { "," Expression } ] "]"
+
+(* Identifiers *)
+Identifier      ::= Alpha { Alphanumeric }
+
+(* Comments *)
+Comment         ::= "//" { AnyCharacter - Newline }
+
+(* Tokens Definitions *)
+Alpha           ::= "A" | "B" | "C" | ... | "Z" | "a" | "b" | "c" | ... | "z" | "_"
+
+Digit           ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+Alphanumeric    ::= Alpha | Digit
+
+AnyCharacter    ::= ? any valid character except newline ?
+
+(* Whitespace and Separators *)
+(*
+Whitespace (spaces, tabs, etc.) and separators (commas, semicolons, parentheses, etc.)
+are handled implicitly by the parser combinators and token definitions.
+*)
