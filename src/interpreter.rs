@@ -7,6 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
   String(String),
+  Array(Vec<Value>),
   Number(i32),
   Bool(bool),
   Identifier(u64),
@@ -73,6 +74,7 @@ impl Interpreter {
             Value::Number(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Identifier(id) => format!("<id:{}>", id),
+            Value::Array(arr) => format!("{:?}", arr),
             Value::Function{..} => "<function>".to_string(),
           };
           return Ok(Value::String(lhs + &rhs));
@@ -83,6 +85,7 @@ impl Interpreter {
             Value::Number(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Identifier(id) => format!("<id:{}>", id),
+            Value::Array(arr) => format!("{:?}", arr),
             Value::Function{..} => "<function>".to_string(),
           };
           return Ok(Value::String(lhs + &rhs));
@@ -90,7 +93,7 @@ impl Interpreter {
         (Value::Number(l_num), Value::Number(r_num)) => {
           return Ok(Value::Number(l_num + r_num));
         }
-        (Value::Bool(_)|Value::Number(_)|Value::Identifier(_)|Value::Function{..}, Value::Bool(_)|Value::Number(_)|Value::Identifier(_)|Value::Function{..}) => {
+        (Value::Bool(_)|Value::Number(_)|Value::Identifier(_)|Value::Array(_)|Value::Function{..}, Value::Bool(_)|Value::Number(_)|Value::Identifier(_)|Value::Array(_)|Value::Function{..}) => {
           return Err(AsaErrorKind::TypeMismatch("Invalid types for `+` operation".to_string()));
         }
       }
@@ -401,10 +404,192 @@ impl Interpreter {
             }
           }
         }
-      },
+      }
+
+      Node::ArrayLiteral { children } => {
+        let mut arr = Vec::new();
+        for c in children {
+          let val = self.exec(c)?;
+          arr.push(val);
+        }
+        Ok(Value::Array(arr))
+      }
+
+      Node::IndexAccess { children } => {
+        // children[0] = object, children[1] = index expression
+        let object_val = self.exec(&children[0])?;
+        let index_val = self.exec(&children[1])?;
+        let idx = match index_val {
+          Value::Number(n) => n,
+          _ => return Err(AsaErrorKind::TypeMismatch("Index must be a number".to_string())),
+        };
+        match object_val {
+          Value::String(s) => {
+            let chars: Vec<char> = s.chars().collect();
+            if idx < 0 || (idx as usize) >= chars.len() {
+              return Err(AsaErrorKind::Generic("String index out of range".to_string()));
+            }
+            Ok(Value::String(chars[idx as usize].to_string()))
+          }
+          Value::Array(arr) => {
+            if idx < 0 || (idx as usize) >= arr.len() {
+              return Err(AsaErrorKind::Generic("Array index out of range".to_string()));
+            }
+            Ok(arr[idx as usize].clone())
+          }
+          _ => Err(AsaErrorKind::TypeMismatch("Cannot index this type".to_string())),
+        }
+      }
+
+      Node::PropertyAccess { children } => {
+        // children[0] = object, children[1] = property identifier
+        let object_val = self.exec(&children[0])?;
+        let property_node = &children[1];
+        let property_name = if let Node::Identifier { value } = property_node {
+          String::from_utf8_lossy(value).to_string()
+        } else {
+          return Err(AsaErrorKind::Generic("Invalid property name".to_string()));
+        };
+
+        match object_val {
+          Value::String(s) => {
+            match property_name.as_str() {
+              "length" => Ok(Value::Number(s.chars().count() as i32)),
+
+              _ => Err(AsaErrorKind::Generic("Unknown property on array".to_string()))
+            }
+          }
+          Value::Array(arr) => {
+            match property_name.as_str() {
+              "length" => Ok(Value::Number(arr.len() as i32)),
+
+              _ => Err(AsaErrorKind::Generic("Unknown property on array".to_string()))
+            }
+          }
+          _ => Err(AsaErrorKind::Generic("Cannot access properties on this type".to_string())),
+        }
+      }
+      Node::MethodCall { name, children } => {
+        let object_val = self.exec(&children[0])?;
+        let mut arg_values = Vec::new();
+        for arg in children.iter().skip(1) {
+          arg_values.push(self.exec(&arg)?);
+        }
+
+        let method_str = String::from_utf8_lossy(&name).to_string();
+
+        match (object_val, &children[0]) {
+          (Value::Array(mut arr), &Node::Identifier { ref value }) => {
+            match method_str.as_str() {
+              "push" => {
+                if arg_values.len() != 1 {
+                  return Err(AsaErrorKind::Generic("push expects exactly one argument".to_string()));
+                }
+                // Mutate the array
+                arr.push(arg_values[0].clone());
+
+                // Write back into the variable environment so `a` is updated
+                let var_id = Self::hash_identifier(value);
+                self.set_variable(var_id, Value::Array(arr.clone()));
+
+                // Return the new length (or any other value you want)
+                Ok(Value::Array(arr))
+              }
+              "pop" => {
+                if arg_values.len() != 0 {
+                  return Err(AsaErrorKind::Generic("pop expects no arguments".to_string()));
+                }
+                // Mutate the array
+                let popped = arr.pop();
+
+                // Write back into the variable environment so `a` is updated
+                let var_id = Self::hash_identifier(value);
+                self.set_variable(var_id, Value::Array(arr.clone()));
+
+                // Return the popped value
+                match popped {
+                  Some(val) => Ok(val),
+                  None => Err(AsaErrorKind::Generic("pop on empty array".to_string())),
+                }
+              }
+              "insert" => {
+                if arg_values.len() != 2 {
+                  return Err(AsaErrorKind::Generic("insert expects exactly two arguments".to_string()));
+                }
+                let idx = match arg_values[0] {
+                  Value::Number(n) => n,
+                  _ => return Err(AsaErrorKind::TypeMismatch("Index must be a number".to_string())),
+                };
+                if idx < 0 || (idx as usize) > arr.len() {
+                  return Err(AsaErrorKind::Generic("Array index out of range".to_string()));
+                }
+                arr.insert(idx as usize, arg_values[1].clone());
+
+                // Write back into the variable environment so `a` is updated
+                let var_id = Self::hash_identifier(value);
+                self.set_variable(var_id, Value::Array(arr.clone()));
+
+                Ok(Value::Array(arr))
+              }
+              "prepend" => {
+                if arg_values.len() != 1 {
+                  return Err(AsaErrorKind::Generic("prepend expects exactly one argument".to_string()));
+                }
+                arr.insert(0, arg_values[0].clone());
+
+                // Write back into the variable environment so `a` is updated
+                let var_id = Self::hash_identifier(value);
+                self.set_variable(var_id, Value::Array(arr.clone()));
+
+                Ok(Value::Array(arr))
+              }
+              _ => Err(AsaErrorKind::Generic(format!("Unknown array method: {}", method_str))),
+            }
+          },
+          (Value::Array(_), _) => {
+            // If the object is not a plain identifier (like a property access), handle accordingly
+            Err(AsaErrorKind::Generic("Method call on non-identifier object not supported yet".to_string()))
+          },
+          _ => Err(AsaErrorKind::Generic("Method calls only implemented for arrays currently".to_string())),
+        }
+      }
       Node::FunctionCall{name, children} => {
         // children[0] = FunctionArguments
         let func_id = Self::hash_identifier(name);
+        let func_name_str = String::from_utf8_lossy(name).to_string();
+
+        // Built-in functions
+        if func_name_str == "print" {
+          // print(x)
+          if let Node::FunctionArguments { children: args } = &children[0] {
+            if args.len() != 1 {
+              return Err(AsaErrorKind::Generic("print expects 1 argument".to_string()));
+            }
+            let val = self.exec(&args[0])?;
+            println!("{:?}", val);
+            return Ok(Value::Bool(true));
+          } else {
+            return Err(AsaErrorKind::Generic("Invalid print args".to_string()));
+          }
+        }
+
+        if func_name_str == "len" {
+          // len(x)
+          return if let Node::FunctionArguments { children: args } = &children[0] {
+            if args.len() != 1 {
+              return Err(AsaErrorKind::Generic("len expects 1 argument".to_string()));
+            }
+            let val = self.exec(&args[0])?;
+            match val {
+              Value::String(s) => Ok(Value::Number(s.chars().count() as i32)),
+              Value::Array(arr) => Ok(Value::Number(arr.len() as i32)),
+              _ => Err(AsaErrorKind::Generic("len() not supported on this type".to_string()))
+            }
+          } else {
+            Err(AsaErrorKind::Generic("Invalid len args".to_string()))
+          }
+        }
+
         let func_val = self.get_variable(func_id)?;
         // Extract arguments from children[0]
         let mut arg_nodes = Vec::new();
@@ -421,23 +606,50 @@ impl Interpreter {
         self.call_function(func_val, &arg_nodes)
       },
       Node::Assignment{children} => {
-        // Not tested, but easy to implement:
-        // children[0] = identifier
-        // children[1] = expression
-        if let Node::Identifier{value} = &children[0] {
-          let var_id = Self::hash_identifier(value);
-          let val = self.exec(&children[1])?;
-          // if variable not defined previously, error?
-          // Let's assume it must exist, else error:
-          if !self.stack.last().unwrap().contains_key(&var_id) {
-            return Err(AsaErrorKind::UndefinedFunction);
+        let val = self.exec(&children[1])?;
+
+        match &children[0] {
+          Node::Identifier { value } => {
+            // Normal variable assignment
+            let var_id = Self::hash_identifier(value);
+            self.set_variable(var_id, val.clone());
+            Ok(val)
           }
-          self.set_variable(var_id, val.clone());
-          Ok(val)
-        } else {
-          Err(AsaErrorKind::Generic("Invalid assignment".to_string()))
+
+          Node::IndexAccess { children: idx_children } => {
+            // idx_children[0] = the object (should be an identifier if we want to mutate)
+            // idx_children[1] = index expression
+            let idx = match self.exec(&idx_children[1])? {
+              Value::Number(n) => n,
+              _ => return Err(AsaErrorKind::TypeMismatch("Index must be a number".to_string())),
+            };
+
+            // If the base is an identifier, we can mutate the original variable
+            if let Node::Identifier { value: array_name } = &idx_children[0] {
+              let var_id = Self::hash_identifier(array_name);
+              let mut arr = match self.get_variable(var_id)? {
+                Value::Array(a) => a,
+                _ => return Err(AsaErrorKind::TypeMismatch("Cannot index into non-array".to_string())),
+              };
+              if idx < 0 || idx as usize >= arr.len() {
+                return Err(AsaErrorKind::Generic("Array index out of range".to_string()));
+              }
+              arr[idx as usize] = val.clone();
+              // Store the modified array back into the variable
+              self.set_variable(var_id, Value::Array(arr));
+              Ok(val)
+            } else {
+              Err(AsaErrorKind::Generic("Left side of assignment must be a variable or currently unsupported complex expression".parse().unwrap()))
+            }
+          }
+
+          Node::PropertyAccess {..} => {
+            Err(AsaErrorKind::Generic("Property assignment not supported.".parse().unwrap()))
+          }
+
+          _ => Err(AsaErrorKind::Generic("Invalid lvalue in assignment.".parse().unwrap()))
         }
-      },
+      }
       Node::FunctionReturn{children} => {
         // Not tested
         let val = self.exec(&children[0])?;

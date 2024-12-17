@@ -38,6 +38,10 @@ pub enum Node {
   Bool { value: bool },
   Identifier { value: Vec<u8> },
   String { value: Vec<u8> },
+  ArrayLiteral { children: Vec<Node> },
+  IndexAccess { children: Vec<Node> },
+  PropertyAccess { children: Vec<Node> },
+  MethodCall { name: Vec<u8>, children: Vec<Node>},
   Null,
   Break,
   Continue,
@@ -369,6 +373,89 @@ pub fn continue_statement(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, Node::Continue))
 }
 
+// array_literal: "[" , [expression {"," expression}] , "]"
+pub fn array_literal(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, _) = check_token(&|tk| tk.kind == TokenKind::LeftBracket)(input)?;
+  let (input, elements) = separated_list0(check_token(&|tk| tk.kind == TokenKind::Comma), expression)(input)?;
+  let (input, _) = check_token(&|tk| tk.kind == TokenKind::RightBracket)(input)?;
+  Ok((input, Node::ArrayLiteral{ children: elements }))
+}
+
+// postfix = primary { ("." identifier) | ("[" expression "]") }
+pub fn postfix(input: Tokens) -> IResult<Tokens, Node> {
+  let (input, mut node) = primary(input)?;
+
+  let mut current_input = input;
+  loop {
+    let res = alt((
+      // Parse .identifier
+      map(
+        tuple((check_token(&|tk| tk.kind == TokenKind::Dot), identifier)),
+        |(_, id_node)| {
+          Node::PropertyAccess { children: vec![node.clone(), id_node] }
+        }
+      ),
+
+      // Parse [expression]
+      map(
+        tuple((
+          check_token(&|tk| tk.kind == TokenKind::LeftBracket),
+          expression,
+          check_token(&|tk| tk.kind == TokenKind::RightBracket)
+        )),
+        |(_, idx_expr, _)| {
+          Node::IndexAccess { children: vec![node.clone(), idx_expr] }
+        }
+      )
+    ))(current_input.clone());
+
+    match res {
+      Ok((next_input, new_node)) => {
+        node = new_node;
+        current_input = next_input;
+      },
+      Err(_) => { break; }
+    }
+  }
+
+  let (current_input, maybe_method_call) = opt(tuple((
+    check_token(&|tk| tk.kind == TokenKind::LeftParen),
+    separated_list0(check_token(&|tk| tk.kind == TokenKind::Comma), expression),
+    check_token(&|tk| tk.kind == TokenKind::RightParen),
+  )))(current_input)?;
+
+  if let Some((_, args, _)) = maybe_method_call {
+    // If node is a PropertyAccess, it should have children:
+    // children[0] = object, children[1] = method identifier.
+    if let Node::PropertyAccess { children } = node {
+      let object_node = children[0].clone();
+
+      // The method name should come from children[1] if it's an Identifier node
+      let method_name = if let Node::Identifier { value } = &children[1] {
+        value.clone()
+      } else {
+        return Err(Err::Error(nom::error::Error::new(current_input, nom::error::ErrorKind::Tag)));
+      };
+
+      // Construct the new children array:
+      // first entry = object, then all arguments follow
+      let mut new_children = Vec::with_capacity(1 + args.len());
+      new_children.push(object_node);
+      new_children.extend(args);
+
+      node = Node::MethodCall {
+        name: method_name,
+        children: new_children,
+      };
+    } else {
+      // If we don't have a property access but found a '(', this might represent a
+      // normal function call scenario handled elsewhere. For now, do nothing here.
+    }
+  }
+
+  Ok((current_input, node))
+}
+
 // addition = multiplication , { ("+" | "-", "%") , multiplication } ;
 pub fn addition(input: Tokens) -> IResult<Tokens, Node> {
   let (input, first_mul) = multiplication(input)?;
@@ -455,7 +542,7 @@ pub fn unary(input: Tokens) -> IResult<Tokens, Node> {
     check_token(&|tk| tk.kind == TokenKind::Not),
   )))(input)?;
 
-  let (input, prim_node) = primary(input)?;
+  let (input, postfix_node) = postfix(input)?;
 
   if let Some(op_token) = opt_op_token {
     let op_name = match op_token.kind {
@@ -468,15 +555,15 @@ pub fn unary(input: Tokens) -> IResult<Tokens, Node> {
       input,
       Node::UnaryExpression {
         name: op_name,
-        children: vec![prim_node],
+        children: vec![postfix_node],
       }
     ))
   } else {
-    Ok((input, prim_node))
+    Ok((input, postfix_node))
   }
 }
 
-// primary = number | identifier | boolean | string | function_call | "(" , addition , ")" ;
+// primary = number | identifier | boolean | string | function_call | "(" expression ")" | array_literal ;
 pub fn primary(input: Tokens) -> IResult<Tokens, Node> {
   alt((
     map(
@@ -491,6 +578,7 @@ pub fn primary(input: Tokens) -> IResult<Tokens, Node> {
     number,
     identifier,
     boolean,
+    array_literal,
     string,
   ))(input)
 }
@@ -501,6 +589,7 @@ pub fn statement(input: Tokens) -> IResult<Tokens, Node> {
     // if_expression,
     map(terminated(variable_define, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(assignment, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
+    map(terminated(function_call, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(function_return, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(break_statement, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
     map(terminated(continue_statement, check_token(&|tk| tk.kind == TokenKind::Semicolon)), |node| node),
@@ -519,9 +608,34 @@ pub fn function_return(input: Tokens) -> IResult<Tokens, Node> {
   Ok((input, Node::FunctionReturn { children: vec![ret_node] }))
 }
 
+// lvalue = identifier | postfix_that_produces_lvalue
+pub fn lvalue(input: Tokens) -> IResult<Tokens, Node> {
+  // lvalues can be:
+  // - just an identifier (e.g. `x`)
+  // - a property access (e.g. `x.y`)
+  // - an index access (e.g. `x[y]`)
+
+  // We already have `postfix` which can produce `IndexAccess` or `PropertyAccess`.
+  // If postfix produces these nodes, they are valid lvalues.
+  // Identifiers are also valid lvalues.
+
+  // Let's try parsing a `postfix`. If it yields just a plain Identifier, it's fine.
+  // If it yields `IndexAccess` or `PropertyAccess`, it's also fine.
+  // If it yields something else like a `FunctionCall`, that's not assignable.
+
+  let (input, node) = postfix(input)?;
+  match node {
+    Node::Identifier { .. } | Node::IndexAccess { .. } | Node::PropertyAccess { .. } => Ok((input, node)),
+    _ => Err(Err::Error(nom::error::Error::new(
+      input,
+      nom::error::ErrorKind::Tag
+    )))
+  }
+}
+
 // assignment = identifier , "=" , expression ;
 pub fn assignment(input: Tokens) -> IResult<Tokens, Node> {
-  let (input, id_node) = identifier(input)?;
+  let (input, id_node) = lvalue(input)?;
   let (input, _) = check_token(&|tk| tk.kind == TokenKind::Equal)(input)?;
   let (input, expr_node) = expression(input)?;
   Ok((input, Node::Assignment { children: vec![id_node, expr_node] }))

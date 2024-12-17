@@ -1,46 +1,48 @@
-// We'll define a function that runs our Turing machine.
-fn turingMachine(tape) {
-    // 'tape' is a string representing the unary number, e.g. "111".
-    // We'll have a head position. Start at 0.
-    let pos = 0;
-
-    // We can think of 'state' as an integer representing our state machine state.
-    // State 0: move right until end of tape
-    // State 1: write a '1' at the end and halt
+fn turingMachine(tape, pos) {
     let state = 0;
 
-    while true {
-        if state == 0 {
-            // Check if we're beyond the end of the tape
-            if pos >= 3 {
-                // We found the end, now transition to state 1
+    while (state != 2) {
+        // Expand tape at boundaries
+        let n = tape.length;
+        if (pos < 0) {
+            tape = tape.prepend(0); // Prepend 0 at the start
+            pos = 0; // Reset position to 0 after expansion
+        } else if (pos >= n) {
+            tape = tape.push(0); // Append 0 at the end
+        }
+
+        if (state == 0) {
+            if (tape[pos] == 0) {
+                tape[pos] = 1;
+                pos = pos + 1;
                 state = 1;
             } else {
-                // If there's a '1' at this position, just move right
-                // We expect only '1's in this simple unary number.
-                // If we had to handle blank or special chars, we'd check them here.
+                tape[pos] = 0;
                 pos = pos + 1;
+                state = 0;
             }
-        } else if state == 1 {
-            // Append a '1' to the tape
-            // Assuming `tape + "1"` concatenates a '1' character
-            tape = tape + "1";
-            // Halt by breaking out of the loop
-            break;
+        } else if (state == 1) {
+            if (tape[pos] == 0) {
+                tape[pos] = 1;
+                pos = pos + 1;
+                state = 2;
+            } else {
+                tape[pos] = 0;
+                pos = pos - 1;
+                state = 0;
+            }
         }
     }
 
     return tape;
-}
+  }
 
-// Entry point
-// Let's say the file we run has something like:
 fn main() {
-    // Initial tape: "111" (representing the number 3 in unary)
-    let initialTape = "111";
+    let tape = [1, 1, 1, 0]; // Initial tape
+    let headPos = 0; // Start position
+    print("Initial tape: " + tape);
+    tape = turingMachine(tape, headPos);
 
-    let result = turingMachine(initialTape);
-    // print("Resulting Tape: " + result);
-    // This should print "Resulting Tape: 1111"
-    return result;
+    print("Final tape: " + tape);
+    return 0;
 }

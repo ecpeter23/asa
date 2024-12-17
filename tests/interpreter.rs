@@ -1,8 +1,8 @@
-extern crate asalang;
+extern crate asa;
 extern crate nom;
 use std::io::Write;
 
-use asalang::*;
+use asa::*;
 // use nom::IResult;
 
 macro_rules! test_fragment {
@@ -172,3 +172,25 @@ fn greet(name = "Guest") {
 }
 return greet("Alice");
 "#, Ok(Value::String("Hello, Alice".to_string())));
+
+test_fragment!(function_array_sum, r#"
+    let y = [1, 2, 3];
+    let i = 0;
+    let x = 0;
+    while i < y.length {
+      x = x + y[i];
+      i = i + 1;
+    }
+    return x;"#, Ok(Value::Number(6)));
+
+test_fragment!(function_recursive, r#"
+fn factorial(n) {
+    if n == 0 {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+return factorial(5);
+"#, Ok(Value::Number(120)));
