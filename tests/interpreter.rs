@@ -183,7 +183,7 @@ test_fragment!(function_array_sum, r#"
     }
     return x;"#, Ok(Value::Number(6)));
 
-test_fragment!(function_recursive, r#"
+test_fragment!(function_recursive_factorial, r#"
 fn factorial(n) {
     if n == 0 {
         return 1;
@@ -194,3 +194,17 @@ fn factorial(n) {
 
 return factorial(5);
 "#, Ok(Value::Number(120)));
+
+test_fragment!(function_recursive_fibonacci, r#"
+fn fibonacci(n) {
+    if n <= 1 {
+        return n;
+    } else {
+        let a = fibonacci(n - 1);
+        let b = fibonacci(n - 2);
+        return a + b;
+    }
+}
+
+return fibonacci(10);
+  "#, Ok(Value::Number(55)));
