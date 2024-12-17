@@ -1,5 +1,7 @@
 # CSE262 - Programming Languages - Fall 2024
 
+**I CHOSE TO IMPLEMENT THE WHOLE DEAL**
+
 # Final Exam
 
 ⏰ **Due by: 12/16/2024 EOD**
