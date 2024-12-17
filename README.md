@@ -342,7 +342,7 @@ You can use Zoom to do this, [here is a link](https://support.zoom.us/hc/en-us/a
 
 **⚠️IMPORTANT: Make sure you give blanket permission to the link holder to view the file**
 
-🎥 Paste Recording Link(s) Here:
+🎥 Paste Recording Link(s) Here: https://youtu.be/YuuI3vSa54E
 
 ## Submission
 

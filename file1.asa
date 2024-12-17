@@ -42,7 +42,6 @@ fn main() {
     let headPos = 0; // Start position
     print("Initial tape: " + tape);
     tape = turingMachine(tape, headPos);
-
     print("Final tape: " + tape);
     return 0;
 }
