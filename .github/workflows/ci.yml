@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-cargo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2024-04-22
+          override: true
+      # If that doesn't work use this:
+      # - name: Install Rust toolchain
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: nightly-2024-04-22
+      #     override: true
+
+      - name: Show Rustup info
+        run: rustup show
+
+      - name: Show versions
+        run: |
+          rustc --version
+          cargo --version
+
+      # Tests
+      - name: Test lexer
+        run: cargo test lexer
+
+      - name: Test parser
+        run: cargo test parser
+
+      - name: Test interpreter
+        run: cargo test interpreter
